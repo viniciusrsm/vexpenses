@@ -49,7 +49,7 @@ def question4():
 
     # Espalha os conteúdos das lista, separando todos os valores de forma individual
     explode = dirCast.overlap.dropna().explode().value_counts().head(5)
-    print(f'{'Diretor':<25}Filmes próprios atuados')
+    print(f'{"Diretor":<25}Filmes próprios atuados')
     for i, v in explode.items():
         print(f'{i:<25}{v}')
 
@@ -58,31 +58,45 @@ def question5():
     df5 = df.copy()
 
     # Separa os valores de 'cast' em uma lista na mesma célula
+    #a = df5.cast.str.split(', ').to_list()
     df5['cast'] = df5.cast.str.split(', ')
 
     # Remove todos os valores que sejam NaN ou não tenham mais de um ator
     castFilter = df5.cast.dropna()[df5.cast.dropna().apply(lambda x: len(x) > 1)]
-
-    # Ordena os elencos que aparecem com maior incidência juntos e seleciona os primeiro 5
-    castCount = castFilter.value_counts().head(5)
-    print(castCount.to_string().replace('cast', 'Os elencos que mais trabalharam juntos são:'))
+    # Ordena o set de elencos que aparecem com maior incidência juntos e seleciona os primeiro 5
+    castCount = castFilter.apply(set).value_counts().head(5)
+    print(castCount.to_string()
+          .replace('cast', 'Os elencos que mais trabalharam juntos são:'))
 
 def question6():
     # Ordena os anos por ordem de mais lançamentos e seleciona os primeiros 5
     topYears = df.release_year.value_counts().head(5)
 
-    print(topYears.to_string().replace('release_year', 'Anos com maiores lançamentos são:'))
-
+    print(topYears.to_string()
+          .replace('release_year', 'Anos com maiores lançamentos são:'))
+    
 def question7():
+    # Extrai os meses da coluna de date_added
+    monthAdded = df.date_added.dropna().str.strip().str.split(' ').str[0]
+    
+    # Ordena os meses por ordem de ocorrência
+    monthCount = monthAdded.value_counts()
+    print(monthCount.to_string()
+          .replace('date_added', 'Meses ordenados por quantidades de filmes adicionados:'))
+
+def question8():
     # Separa todos os gêneros de forma individual
     genreExplode = df.listed_in.str.split(', ').explode()
+    
+    # Remove os tipos de gênero "International"
+    genreExplode = genreExplode.loc[~genreExplode.str.contains('International')]
 
     # Ordena os gêneros por ordem de ocorrência e seleciona os primeiros 5
     genreCount = genreExplode.value_counts().head(5)
 
     print(genreCount.to_string().replace('listed_in', 'Gêneros mais ocorrentes são:'))
 
-def question8():
+def question9():
     # Separa todos os países de forma individual
     countryExplode = df.country.str.split(', ').explode()
 
@@ -91,38 +105,91 @@ def question8():
 
     print(countryCount.to_string().replace('country', 'Os paises com mais filmes são:'))
 
-def question9():
-    # Cria uma cópia do dataframe para não afetar o original
-    df9 = df
-
+def question10():
     # Gera dois novos dataframes com todos os diretores e generos separados
-    explodeDir = df9.director.str.split(', ').explode().reset_index()
-    explodeGenre = df.listed_in.str.split(', ').explode().reset_index()
+    dirExplode = df.director.str.split(', ').explode().reset_index()
+    genreExplode = df.listed_in.str.split(', ').explode().reset_index()
 
     # Unifica os dois dataframes
-    merge = explodeDir.merge(explodeGenre).dropna()
+    merge = dirExplode.merge(genreExplode).dropna()
 
     # Ordena os pares de diretores e gêneros que mais aparecem juntos e seleciona os 5 primeiros
     mergeCount = merge.value_counts(['director', 'listed_in']).head(5)
     
     print('Diretores que mais repetiram gêneros são:')
-    print(mergeCount.to_string().replace('director', 'Diretor').replace('listed_in', ' Gênero'))    
+    print(mergeCount.to_string()
+          .replace('director', 'Diretor')
+          .replace('listed_in', ' Gênero'))    
 
-def mainFunction():
+def question11():
+    # Extrai a coluna de duração de todos os filmes
+    movieTime = df.loc[df['type'] == 'Movie'].duration
+    
+    # Transforma a coluna de duração de string para int64
+    timeColumn = movieTime.str.replace(' min','').dropna().astype(int)
+    
+    # Faz o cut dos tempos, separando-os em grupos e ordena as maiores ocorrências
+    cutCount = pd.cut(
+                timeColumn, [0, 60, 90, 120, 150, float('inf')], 
+                labels=[
+                    'De 0h a 1h', 
+                    'De 1h a 1h30', 
+                    'De 1h30 a 2h', 
+                    'De 2h a 2h30', 
+                    'Maior que 2h30'
+                ]).value_counts()
+    print(f'A média de duração dos filmes é {round(timeColumn.median())} minutos')
+    print(cutCount.to_string().replace('duration', 'Separação dos filmes por duração:'))
+    
+def question12():
+    # Extrai as séries com classificação madura
+    matureShows = df.loc[(df.type != 'Movie') & (df.rating == 'TV-MA')]
+        
+    # Explode dos gêneros das classificações maduras
+    genreExplode = matureShows.listed_in.str.split(', ').explode()
+
+    # Remove os tipos de gênero "International"
+    genreExplode = genreExplode.loc[~genreExplode.str.contains('International')]
+    
+    # Ordena os gêneros por ordem de ocorrência e seleciona os 5 primeiros
+    count = genreExplode.value_counts().head(5)
+    print(count.to_string()
+          .replace('listed_in', 'Gêneros mais ocorrentes em séries de TV maduras:'))
+    
+def question13():
+    # Extrai os filmes com classificação madura
+    matureShows = df.loc[(df.type == 'Movie') & (df.rating == 'R')]
+        
+    # Explode dos gêneros das classificações maduras
+    genreExplode = matureShows.listed_in.str.split(', ').explode()
+
+    # Remove os tipos de gênero "International"
+    genreExplode = genreExplode.loc[~genreExplode.str.contains('International')]
+    
+    # Ordena os gêneros por ordem de ocorrência e seleciona os 5 primeiros
+    count = genreExplode.value_counts().head(5)
+    print(count.to_string()
+          .replace('listed_in', 'Gêneros mais ocorrentes em filmes maduros:'))
+
+def main():
     print('#-'*35 + '\n')
     print('Seja bem-vindo ao Sistema VExpenses')
     print('Utilize os números na tabela abaixo para acessar as funções!\n')
     print('#-'*35)
     text = """
 1 - Quantas colunas estão presentes no dataset?
-2 - Quantos filmes estão disponíveis na Netflix?
+2 - Quantos filmes estão disponíveis no dataset?
 3 - Quem são os 5 diretores com mais filmes e séries na plataforma?
 4 - Quais diretores também atuaram como atores em suas próprias produções?
 5 - Quais elencos mais trabalharam juntos?
 6 - Quais anos possuem a maior quantidade de obras lançadas?
-7 - Quais gêneros são os mais ocorrentes?
-8 - Quais países têm mais filmes?
-9 - Quais diretores trabalharam mais vezes com o mesmo gênero?
+7 - Quais meses possuem a maior quantidade de obras lançadas?
+8 - Quais gêneros são os mais ocorrentes?
+9 - Quais países têm mais filmes?
+10 - Quais diretores trabalharam mais vezes com o mesmo gênero?
+11 - Qual o tempo médio de duração dos filmes?
+12 - Quais são os gêneros mais ocorrentes em séries de TV maduras?
+13 - Quais são os gêneros mais ocorrentes em filmes maduros?
 q - Sair do programa
 """
     print(text)
@@ -139,11 +206,13 @@ q - Sair do programa
             case '7': question7()
             case '8': question8()
             case '9': question9()
+            case '10': question10()
+            case '11': question11()
+            case '12': question12()
+            case '13': question13()
+
             case _: print('Insira um input válido!')
         print()
 
-def test():
-    question5()
-
 if __name__ == "__main__":
-    mainFunction()
+    main()
